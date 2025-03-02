@@ -16,14 +16,14 @@ import {
 import { ResizableBox } from '@wordpress/components';
 import { useState, useEffect } from '@wordpress/element';
 import { View } from '@wordpress/primitives';
-import { useSelect } from '@wordpress/data';
+import { useSelect, useDispatch } from '@wordpress/data';
 
 /**
  * Internal dependencies
  */
 import { unlock } from '../lock-unlock';
 import SpacerControls from './controls';
-import { MIN_SPACER_SIZE } from './constants';
+import { DEFAULT_HEIGHT, MIN_SPACER_SIZE } from './constants';
 
 const { useSpacingSizes } = unlock( blockEditorPrivateApis );
 
@@ -124,6 +124,9 @@ const SpacerEdit = ( {
 	const onResizeStart = () => toggleSelection( false );
 	const onResizeStop = () => toggleSelection( true );
 
+	const { __unstableMarkNextChangeAsNotPersistent } =
+		useDispatch( blockEditorStore );
+
 	const handleOnVerticalResizeStop = ( newHeight ) => {
 		onResizeStop();
 
@@ -166,9 +169,13 @@ const SpacerEdit = ( {
 
 	const getHeightForVerticalBlocks = () => {
 		if ( isFlexLayout ) {
-			return undefined;
+			return DEFAULT_HEIGHT;
 		}
-		return temporaryHeight || getSpacingPresetCssVar( height ) || undefined;
+		return (
+			temporaryHeight ||
+			getSpacingPresetCssVar( height ) ||
+			DEFAULT_HEIGHT
+		);
 	};
 
 	const getWidthForHorizontalBlocks = () => {
@@ -256,6 +263,14 @@ const SpacerEdit = ( {
 	};
 
 	useEffect( () => {
+		// To avoid interfering with undo/redo operations any changes in this
+		// effect must not make history and should be preceded by
+		// `__unstableMarkNextChangeAsNotPersistent()`.
+		const setAttributesCovertly = ( nextAttributes ) => {
+			__unstableMarkNextChangeAsNotPersistent();
+			setAttributes( nextAttributes );
+		};
+
 		if (
 			isFlexLayout &&
 			selfStretch !== 'fill' &&
@@ -268,8 +283,8 @@ const SpacerEdit = ( {
 				const newSize =
 					getCustomValueFromPreset( width, spacingSizes ) ||
 					getCustomValueFromPreset( height, spacingSizes ) ||
-					'100px';
-				setAttributes( {
+					DEFAULT_HEIGHT;
+				setAttributesCovertly( {
 					width: '0px',
 					style: {
 						...blockStyle,
@@ -284,8 +299,8 @@ const SpacerEdit = ( {
 				const newSize =
 					getCustomValueFromPreset( height, spacingSizes ) ||
 					getCustomValueFromPreset( width, spacingSizes ) ||
-					'100px';
-				setAttributes( {
+					DEFAULT_HEIGHT;
+				setAttributesCovertly( {
 					height: '0px',
 					style: {
 						...blockStyle,
@@ -301,26 +316,16 @@ const SpacerEdit = ( {
 			isFlexLayout &&
 			( selfStretch === 'fill' || selfStretch === 'fit' )
 		) {
-			if ( inheritedOrientation === 'horizontal' ) {
-				setAttributes( {
-					width: undefined,
-				} );
-			} else {
-				setAttributes( {
-					height: undefined,
-				} );
-			}
+			setAttributesCovertly(
+				inheritedOrientation === 'horizontal'
+					? { width: undefined }
+					: { height: undefined }
+			);
 		} else if ( ! isFlexLayout && ( selfStretch || flexSize ) ) {
-			if ( inheritedOrientation === 'horizontal' ) {
-				setAttributes( {
-					width: flexSize,
-				} );
-			} else {
-				setAttributes( {
-					height: flexSize,
-				} );
-			}
-			setAttributes( {
+			setAttributesCovertly( {
+				...( inheritedOrientation === 'horizontal'
+					? { width: flexSize }
+					: { height: flexSize } ),
 				style: {
 					...blockStyle,
 					layout: {
@@ -342,6 +347,7 @@ const SpacerEdit = ( {
 		setAttributes,
 		spacingSizes,
 		width,
+		__unstableMarkNextChangeAsNotPersistent,
 	] );
 
 	return (
