@@ -14,7 +14,6 @@ import {
 	TextControl,
 	TextareaControl,
 	ToolbarButton,
-	Tooltip,
 	ToolbarGroup,
 } from '@wordpress/components';
 import { displayShortcut, isKeyboardEvent } from '@wordpress/keycodes';
@@ -202,6 +201,7 @@ function Controls( { attributes, setAttributes, setIsLabelFieldFocused } ) {
 						);
 					} }
 					autoComplete="off"
+					type="url"
 				/>
 			</ToolsPanelItem>
 
@@ -490,10 +490,6 @@ export default function NavigationLinkEdit( {
 	const placeholderText = `(${
 		isInvalid ? __( 'Invalid' ) : __( 'Draft' )
 	})`;
-	const tooltipText =
-		isInvalid || isDraft
-			? __( 'This item has been deleted, or is a draft' )
-			: __( 'This item is missing a link' );
 
 	return (
 		<>
@@ -533,9 +529,7 @@ export default function NavigationLinkEdit( {
 					{ /* eslint-enable */ }
 					{ ! url ? (
 						<div className="wp-block-navigation-link__placeholder-text">
-							<Tooltip text={ tooltipText }>
-								<span>{ missingText }</span>
-							</Tooltip>
+							<span>{ missingText }</span>
 						</div>
 					) : (
 						<>
@@ -578,27 +572,30 @@ export default function NavigationLinkEdit( {
 							{ ( isInvalid ||
 								isDraft ||
 								isLabelFieldFocused ) && (
-								<div className="wp-block-navigation-link__placeholder-text wp-block-navigation-link__label">
-									<Tooltip text={ tooltipText }>
-										<span
-											aria-label={ __(
-												'Navigation link text'
-											) }
-										>
-											{
-												// Some attributes are stored in an escaped form. It's a legacy issue.
-												// Ideally they would be stored in a raw, unescaped form.
-												// Unescape is used here to "recover" the escaped characters
-												// so they display without encoding.
-												// See `updateAttributes` for more details.
-												`${ decodeEntities( label ) } ${
-													isInvalid || isDraft
-														? placeholderText
-														: ''
-												}`.trim()
-											}
-										</span>
-									</Tooltip>
+								<div
+									className={ clsx(
+										'wp-block-navigation-link__placeholder-text',
+										'wp-block-navigation-link__label',
+										{
+											'is-invalid': isInvalid,
+											'is-draft': isDraft,
+										}
+									) }
+								>
+									<span>
+										{
+											// Some attributes are stored in an escaped form. It's a legacy issue.
+											// Ideally they would be stored in a raw, unescaped form.
+											// Unescape is used here to "recover" the escaped characters
+											// so they display without encoding.
+											// See `updateAttributes` for more details.
+											`${ decodeEntities( label ) } ${
+												isInvalid || isDraft
+													? placeholderText
+													: ''
+											}`.trim()
+										}
+									</span>
 								</div>
 							) }
 						</>
